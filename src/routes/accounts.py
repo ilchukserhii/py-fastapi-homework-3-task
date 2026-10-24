@@ -74,7 +74,7 @@ async def activate_user(user: UserActivationRequestSchema, db: AsyncSession = De
     user_data = await db.execute(select(UserModel).where(UserModel.email == user.email))
     db_user = user_data.scalar_one_or_none()
     if db_user is None:
-        raise HTTPException(status_code=400)
+        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
     user_token = await db.execute(select(ActivationTokenModel).where(ActivationTokenModel.user == db_user))
     db_user_token = user_token.scalar_one_or_none()
     if db_user.is_active:
@@ -154,11 +154,7 @@ async def reset_password(user: PasswordResetCompleteRequestSchema, db: AsyncSess
     return {"message": "Password reset successfully."}
 
 
-@router.post(
-    "/login/",
-    status_code=status.HTTP_201_CREATED,
-    response_model=UserLoginResponseSchema
-)
+@router.post("/login/", response_model=UserLoginResponseSchema)
 async def login_user(
     user: UserLoginRequestSchema,
     db: AsyncSession = Depends(get_db),
