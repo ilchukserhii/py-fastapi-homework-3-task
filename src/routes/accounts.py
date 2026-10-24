@@ -82,12 +82,7 @@ async def activate_user(user: UserActivationRequestSchema, db: AsyncSession = De
 
     if db_user_token is None:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
-    print("TOKEN EXPIRES:", db_user_token.expires_at)
-    print("TOKEN TZINFO:", db_user_token.expires_at.tzinfo)
-    print("NOW UTC:", datetime.now(timezone.utc))
-    print("TOKEN MATCH:", db_user_token.token == user.token)
-    print("DB TOKEN:", repr(db_user_token.token))
-    print("REQUEST TOKEN:", repr(user.token))
+
     if db_user_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
@@ -111,7 +106,7 @@ async def activate_user(user: UserActivationRequestSchema, db: AsyncSession = De
 async def reset_request(user: PasswordResetRequestSchema, db: AsyncSession = Depends(get_db)):
     user_data = await db.execute(select(UserModel).where(UserModel.email == user.email))
     db_user = user_data.scalar_one_or_none()
-    if not db_user.is_active or db_user is None:
+    if db_user is None or not db_user.is_active:
         return {"message": "If you are registered, you will receive an email with instructions."}
     pass_reset_token = await db.execute(select(PasswordResetTokenModel).where(PasswordResetTokenModel.user == db_user))
     new_pass_token = PasswordResetTokenModel(user=db_user)
@@ -130,7 +125,7 @@ async def reset_request(user: PasswordResetRequestSchema, db: AsyncSession = Dep
 async def reset_password(user: PasswordResetCompleteRequestSchema, db: AsyncSession = Depends(get_db)):
     user_data = await db.execute(select(UserModel).where(UserModel.email == user.email))
     db_user = user_data.scalar_one_or_none()
-    if not db_user.is_active or db_user is None:
+    if db_user is None or not db_user.is_active:
         raise HTTPException(status_code=400, detail="Invalid email or token.")
     pass_reset_token = await db.execute(select(PasswordResetTokenModel).where(PasswordResetTokenModel.user == db_user))
     pass_reset_token = pass_reset_token.scalar_one_or_none()
