@@ -147,7 +147,7 @@ async def reset_password(user: PasswordResetCompleteRequestSchema, db: AsyncSess
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
     expires_at = pass_reset_token.expires_at
-    
+
     if expires_at.tzinfo is None:
         expires_at = expires_at.replace(tzinfo=timezone.utc)
 
