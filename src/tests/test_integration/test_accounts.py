@@ -509,6 +509,7 @@ async def test_reset_password_success(client, db_session, seed_user_groups):
     )
 
     await db_session.refresh(created_user)
+    assert created_user._hashed_password != new_password
     assert created_user.verify_password(new_password), "Password should be updated successfully in the database."
 
 

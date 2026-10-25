@@ -75,7 +75,7 @@ async def activate_user(user: UserActivationRequestSchema, db: AsyncSession = De
     db_user = user_data.scalar_one_or_none()
     if db_user is None:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
-    user_token = await db.execute(select(ActivationTokenModel).where(ActivationTokenModel.user == db_user))
+    user_token = await db.execute(select(ActivationTokenModel).where(ActivationTokenModel.user_id == db_user.id))
     db_user_token = user_token.scalar_one_or_none()
     if db_user.is_active:
         raise HTTPException(status_code=400, detail="User account is already active.")
@@ -83,8 +83,16 @@ async def activate_user(user: UserActivationRequestSchema, db: AsyncSession = De
     if db_user_token is None:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
 
-    if db_user_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
+    expires_at = db_user_token.expires_at
+
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid or expired activation token."
+        )
 
     if db_user_token.token != user.token:
         raise HTTPException(status_code=400, detail="Invalid or expired activation token.")
@@ -138,10 +146,18 @@ async def reset_password(user: PasswordResetCompleteRequestSchema, db: AsyncSess
         await db.commit()
         raise HTTPException(status_code=400, detail="Invalid email or token.")
 
-    if pass_reset_token.expires_at.replace(tzinfo=timezone.utc) < datetime.now(timezone.utc):
+    expires_at = pass_reset_token.expires_at
+    
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < datetime.now(timezone.utc):
         await db.delete(pass_reset_token)
         await db.commit()
-        raise HTTPException(status_code=400, detail="Invalid email or token.")
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid email or token."
+        )
 
     try:
         await db.delete(pass_reset_token)
