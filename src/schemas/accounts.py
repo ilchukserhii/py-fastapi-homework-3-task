@@ -47,6 +47,11 @@ class PasswordResetCompleteRequestSchema(BaseModel):
     email: EmailStr
     token: str
     password: str
+    
+    @field_validator("password")
+    def validate_password(value: str) -> str:
+        accounts_validators.validate_password_strength(value)
+        return value
 
 
 class UserLoginRequestSchema(BaseModel):
