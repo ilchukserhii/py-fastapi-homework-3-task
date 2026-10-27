@@ -105,7 +105,7 @@ async def activate_user(user: UserActivationRequestSchema, db: AsyncSession = De
         await db.refresh(db_user)
     except SQLAlchemyError:
         await db.rollback()
-        raise
+        raise HTTPException(status_code=500, detail="Invalid or expired activation token.")
 
     return {"message": "User account activated successfully."}
 
@@ -116,13 +116,16 @@ async def reset_request(user: PasswordResetRequestSchema, db: AsyncSession = Dep
     db_user = user_data.scalar_one_or_none()
     if db_user is None or not db_user.is_active:
         return {"message": "If you are registered, you will receive an email with instructions."}
-    pass_reset_token = await db.execute(select(PasswordResetTokenModel).where(PasswordResetTokenModel.user == db_user))
+    pass_reset_token = await db.execute(
+        select(PasswordResetTokenModel).
+        where(PasswordResetTokenModel.user_id == db_user.id)
+    )
     new_pass_token = PasswordResetTokenModel(user=db_user)
     db_pass_token = pass_reset_token.scalar_one_or_none()
     if db_pass_token is not None:
         await db.delete(db_pass_token)
+        await db.flush()
 
-    await db.flush()
     db.add(new_pass_token)
     await db.commit()
 
